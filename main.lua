@@ -1202,60 +1202,65 @@ end
 -- Initialize window dragging
 function Window:InitializeDragging()
     local UserInputService = game:GetService("UserInputService")
-    local dragInput, dragStart, startPos
-    
-    -- Make title bar draggable
+    local dragging, dragInput, dragStart, startPos
+
+    -- When the user presses down on the title bar...
     self.TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragStart = input.Position
-            startPos = self.MainFrame.Position
-            self.Dragging = true
-            
-            -- Capture initial input
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+            dragging   = true
+            dragInput  = input
+            dragStart  = input.Position
+            startPos   = self.MainFrame.Position
+
+            -- Stop dragging when they release
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
-                    self.Dragging = false
+                    dragging  = false
+                    dragInput = nil
                 end
             end)
         end
     end)
-    
-    -- Track the input that's moving during the drag
+
+    -- Track which input is moving
     self.TitleBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseMovement 
+        or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
     end)
-    
-    -- Update drag position
+
+    -- Update the frame’s position as they move the mouse/finger
     UserInputService.InputChanged:Connect(function(input)
-        if self.Dragging and (input == dragInput) then
-            local delta = input.Position - dragStart
-            
-            -- Get screen constraints
+        if dragging and input == dragInput then
+            local delta     = input.Position - dragStart
+            local newXOff   = startPos.X.Offset + delta.X
+            local newYOff   = startPos.Y.Offset + delta.Y
+
+            -- Get the screen and frame sizes
             local screenSize = workspace.CurrentCamera.ViewportSize
-            local frameSize = self.MainFrame.AbsoluteSize
-            
-            -- Calculate new position
-            local newX = startPos.X.Offset + delta.X
-            local newY = startPos.Y.Offset + delta.Y
-            
-            -- Constrain to screen bounds with 10px margin
-            newX = math.clamp(newX, -frameSize.X + 100, screenSize.X - 100)
-            newY = math.clamp(newY, 0, screenSize.Y - 50)
-            
-            -- Update position immediately without tween for smooth dragging
-            self.MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
+            local frameSize  = self.MainFrame.AbsoluteSize
+
+            -- Clamp so the frame always stays fully on-screen
+            newXOff = math.clamp(newXOff, 0, screenSize.X - frameSize.X)
+            newYOff = math.clamp(newYOff, 0, screenSize.Y - frameSize.Y)
+
+            -- Apply
+            self.MainFrame.Position = UDim2.new(
+                startPos.X.Scale, newXOff,
+                startPos.Y.Scale, newYOff
+            )
         end
     end)
-    
-    -- Handle drag end when mouse is released anywhere
+
+    -- Also stop dragging if they release anywhere
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            self.Dragging = false
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging  = false
             dragInput = nil
-            dragStart = nil
-            startPos = nil
         end
     end)
 end
