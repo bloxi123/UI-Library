@@ -1203,68 +1203,78 @@ end
 function Window:InitializeDragging()
     local UserInputService = game:GetService("UserInputService")
     local dragging, dragInput, dragStart, startPos
-
+    
     -- When the user presses down on the title bar...
     self.TitleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
-
-            dragging   = true
-            dragInput  = input
-            dragStart  = input.Position
-            startPos   = self.MainFrame.Position
-
+            dragging = true
+            dragInput = input
+            dragStart = input.Position
+            startPos = self.MainFrame.Position
+            
             -- Stop dragging when they release
-            input.Changed:Connect(function()
+            local inputEndedConnection
+            inputEndedConnection = input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
-                    dragging  = false
+                    dragging = false
                     dragInput = nil
+                    if inputEndedConnection then
+                        inputEndedConnection:Disconnect()
+                    end
+                end
+            end)
+            
+            -- Create a connection for this specific drag session
+            local dragConnection
+            dragConnection = UserInputService.InputChanged:Connect(function(currentInput)
+                if not dragging then 
+                    dragConnection:Disconnect()
+                    return 
+                end
+                
+                if currentInput.UserInputType == Enum.UserInputType.MouseMovement 
+                or currentInput.UserInputType == Enum.UserInputType.Touch then
+                    local delta = currentInput.Position - dragStart
+                    local newXOff = startPos.X.Offset + delta.X
+                    local newYOff = startPos.Y.Offset + delta.Y
+                    
+                    -- Get the screen and frame sizes
+                    local screenSize = workspace.CurrentCamera.ViewportSize
+                    local frameSize = self.MainFrame.AbsoluteSize
+                    
+                    -- Clamp so the frame always stays fully on-screen
+                    newXOff = math.clamp(newXOff, 0, screenSize.X - frameSize.X)
+                    newYOff = math.clamp(newYOff, 0, screenSize.Y - frameSize.Y)
+                    
+                    -- Apply
+                    self.MainFrame.Position = UDim2.new(
+                        startPos.X.Scale, newXOff,
+                        startPos.Y.Scale, newYOff
+                    )
+                end
+            end)
+            
+            -- Also stop dragging if they release anywhere
+            local inputEndedGlobalConnection
+            inputEndedGlobalConnection = UserInputService.InputEnded:Connect(function(endedInput)
+                if endedInput.UserInputType == Enum.UserInputType.MouseButton1
+                or endedInput.UserInputType == Enum.UserInputType.Touch then
+                    dragging = false
+                    dragInput = nil
+                    
+                    if dragConnection then
+                        dragConnection:Disconnect()
+                    end
+                    
+                    if inputEndedGlobalConnection then
+                        inputEndedGlobalConnection:Disconnect()
+                    end
                 end
             end)
         end
     end)
-
-    -- Track which input is moving
-    self.TitleBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement 
-        or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
-    -- Update the frame’s position as they move the mouse/finger
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input == dragInput then
-            local delta     = input.Position - dragStart
-            local newXOff   = startPos.X.Offset + delta.X
-            local newYOff   = startPos.Y.Offset + delta.Y
-
-            -- Get the screen and frame sizes
-            local screenSize = workspace.CurrentCamera.ViewportSize
-            local frameSize  = self.MainFrame.AbsoluteSize
-
-            -- Clamp so the frame always stays fully on-screen
-            newXOff = math.clamp(newXOff, 0, screenSize.X - frameSize.X)
-            newYOff = math.clamp(newYOff, 0, screenSize.Y - frameSize.Y)
-
-            -- Apply
-            self.MainFrame.Position = UDim2.new(
-                startPos.X.Scale, newXOff,
-                startPos.Y.Scale, newYOff
-            )
-        end
-    end)
-
-    -- Also stop dragging if they release anywhere
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-            dragging  = false
-            dragInput = nil
-        end
-    end)
 end
-
 
 -- Toggle window between minimized and expanded states
 function Window:ToggleMinimize()
