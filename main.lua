@@ -124,8 +124,8 @@ function Utility.GetSafeViewport()
     return {
         X = 0,
         Y = 0,
-        Width = screenSize.X,
-        Height = screenSize.Y
+        Width = screenSize.X.Scale,
+        Height = screenSize.Y.Scale
     }
 end
 
