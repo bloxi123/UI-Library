@@ -121,13 +121,11 @@ end
 -- Gets a safe area inside the viewport for GUI placement
 function Utility.GetSafeViewport()
     local screenSize = workspace.CurrentCamera.ViewportSize
-    local safeX = math.clamp(screenSize.X * 0.05, 10, 50)
-    local safeY = math.clamp(screenSize.Y * 0.05, 10, 50)
     return {
-        X = safeX,
-        Y = safeY,
-        Width = screenSize.X - (safeX * 2),
-        Height = screenSize.Y - (safeY * 2)
+        X = 0,
+        Y = 0,
+        Width = screenSize.X,
+        Height = screenSize.Y
     }
 end
 
