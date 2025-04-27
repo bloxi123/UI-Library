@@ -1232,34 +1232,35 @@ function Window:InitializeDragging()
         if self.Dragging and (input == dragInput) then
             local delta = input.Position - dragStart
             
-            -- Get safe area for constraining
-            local safeArea = Utility.GetSafeViewport()
+            -- Get screen constraints
+            local screenSize = workspace.CurrentCamera.ViewportSize
+            local frameSize = self.MainFrame.AbsoluteSize
             
-            -- Update position with smooth tween
-            local newPosition = UDim2.new(
-                startPos.X.Scale, 
-                math.clamp(startPos.X.Offset + delta.X, safeArea.X, safeArea.Width - self.MainFrame.AbsoluteSize.X),
-                startPos.Y.Scale, 
-                math.clamp(startPos.Y.Offset + delta.Y, safeArea.Y, safeArea.Height - self.MainFrame.AbsoluteSize.Y)
-            )
+            -- Calculate new position
+            local newX = startPos.X.Offset + delta.X
+            local newY = startPos.Y.Offset + delta.Y
+            
+            -- Constrain to screen bounds with 10px margin
+            newX = math.clamp(newX, -frameSize.X + 100, screenSize.X - 100)
+            newY = math.clamp(newY, 0, screenSize.Y - 50)
             
             -- Update position immediately without tween for smooth dragging
-            self.MainFrame.Position = newPosition
+            self.MainFrame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
         end
     end)
     
     -- Handle drag end when mouse is released anywhere
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if self.Dragging then
-                self.Dragging = false
-                dragInput = nil
-                dragStart = nil
-                startPos = nil
-            end
+            self.Dragging = false
+            dragInput = nil
+            dragStart = nil
+            startPos = nil
         end
     end)
 end
+
+
 -- Toggle window between minimized and expanded states
 function Window:ToggleMinimize()
     self.Minimized = not self.Minimized
