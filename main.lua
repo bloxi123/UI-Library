@@ -1239,15 +1239,7 @@ function Window:InitializeDragging()
                     local newXOff = startPos.X.Offset + delta.X
                     local newYOff = startPos.Y.Offset + delta.Y
                     
-                    -- Get the screen and frame sizes
-                    local screenSize = workspace.CurrentCamera.ViewportSize
-                    local frameSize = self.MainFrame.AbsoluteSize
-                    
-                    -- Clamp so the frame always stays fully on-screen
-                    newXOff = math.clamp(newXOff, 0, screenSize.X - frameSize.X)
-                    newYOff = math.clamp(newYOff, 0, screenSize.Y - frameSize.Y)
-                    
-                    -- Apply
+                    -- Apply position without clamping to screen
                     self.MainFrame.Position = UDim2.new(
                         startPos.X.Scale, newXOff,
                         startPos.Y.Scale, newYOff
