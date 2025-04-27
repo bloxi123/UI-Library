@@ -1204,44 +1204,64 @@ end
 -- Initialize window dragging
 function Window:InitializeDragging()
     local UserInputService = game:GetService("UserInputService")
+    local dragInput, dragStart, startPos
     
     -- Make title bar draggable
     self.TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragStart = input.Position
+            startPos = self.MainFrame.Position
             self.Dragging = true
-            self.DragStart = input.Position
-            self.StartPosition = self.MainFrame.Position
+            
+            -- Capture initial input
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    self.Dragging = false
+                end
+            end)
         end
     end)
     
+    -- Track the input that's moving during the drag
+    self.TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    -- Update drag position
     UserInputService.InputChanged:Connect(function(input)
-        if self.Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - self.DragStart
-            local targetPosition = UDim2.new(
-                self.StartPosition.X.Scale, 
-                self.StartPosition.X.Offset + delta.X,
-                self.StartPosition.Y.Scale, 
-                self.StartPosition.Y.Offset + delta.Y
+        if self.Dragging and (input == dragInput) then
+            local delta = input.Position - dragStart
+            
+            -- Get safe area for constraining
+            local safeArea = Utility.GetSafeViewport()
+            
+            -- Update position with smooth tween
+            local newPosition = UDim2.new(
+                startPos.X.Scale, 
+                math.clamp(startPos.X.Offset + delta.X, safeArea.X, safeArea.Width - self.MainFrame.AbsoluteSize.X),
+                startPos.Y.Scale, 
+                math.clamp(startPos.Y.Offset + delta.Y, safeArea.Y, safeArea.Height - self.MainFrame.AbsoluteSize.Y)
             )
             
-            -- Constrain to safe viewport area
-            local safeArea = Utility.GetSafeViewport()
-            local absX = math.clamp(targetPosition.X.Offset, safeArea.X, safeArea.Width - self.MainFrame.AbsoluteSize.X)
-            local absY = math.clamp(targetPosition.Y.Offset, safeArea.Y, safeArea.Height - self.MainFrame.AbsoluteSize.Y)
-            
-            Utility.Tween(self.MainFrame, {
-                Position = UDim2.new(targetPosition.X.Scale, absX, targetPosition.Y.Scale, absY)
-            }, 0.1)
+            -- Update position immediately without tween for smooth dragging
+            self.MainFrame.Position = newPosition
         end
     end)
     
+    -- Handle drag end when mouse is released anywhere
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            self.Dragging = false
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            if self.Dragging then
+                self.Dragging = false
+                dragInput = nil
+                dragStart = nil
+                startPos = nil
+            end
         end
     end)
 end
-
 -- Toggle window between minimized and expanded states
 function Window:ToggleMinimize()
     self.Minimized = not self.Minimized
